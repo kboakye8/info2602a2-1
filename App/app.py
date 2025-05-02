@@ -44,6 +44,14 @@ def user_lookup_callback(_jwt_header, jwt_data):
   identity = jwt_data["sub"]
   return User.query.get(identity)
 
+#tells flask jwt to encode the user's id in the token
+def login_user(username, password):
+  user = User.query.filter_by(username=username).first()
+  if user and user.check_password(password):
+    token = create_access_token(identity=user)
+    return token
+  return None
+
 # *************************************
 
 # Initializer Function to be used in both init command and /init route
@@ -121,21 +129,53 @@ def logout_action():
 @app.route("/app/<int:pokemon_id>", methods=['GET'])
 @jwt_required()
 def home_page(pokemon_id=1):
-    # update pass relevant data to template
-    return render_template("home.html")
+    all_pokemon = Pokemon.query.all()
+    selected_pokemon = Pokemon.query.get(pokemon_id)
+    captured_pokemon = UserPokemon.query.filter_by(user_id=current_user.id).all()
+
+    return render_template(
+        "home.html",
+        all_pokemon=all_pokemon,
+        selected_pokemon=selected_pokemon,
+        captured_pokemon=captured_pokemon
+    )
 
 # Action Routes (To Update)
 
 @app.route("/login", methods=['POST'])
 def login_action():
-  # implement login
-  return "Login Action"
+    username = request.form.get("username")
+    password = request.form.get("password")
+    token = login_user(username, password)
+    if token:
+      response = redirect(url_for('home_page'))
+      set_access_cookies(response, token)
+      flash('Login successful')
+      return response
+    else:
+      flash('Invalid username or password')
+      return redirect(url_for('login_page'))
 
 @app.route("/pokemon/<int:pokemon_id>", methods=['POST'])
 @jwt_required()
 def capture_action(pokemon_id):
-  # implement save newly captured pokemon, show a message then reload page
-  return redirect(request.referrer)
+    print("Form data:", request.form)
+    nickname = request.form.get("nickname", "").strip()
+    if not nickname:
+        flash("You must provide a nickname.")
+        return redirect(request.referrer)
+
+    pokemon = Pokemon.query.get(pokemon_id)
+    if not pokemon:
+        flash("That Pokémon doesn't exist.")
+        return redirect(request.referrer)
+
+    new_capture = UserPokemon(user_id=current_user.id, pokemon_id=pokemon_id, name=nickname)
+    db.session.add(new_capture)
+    db.session.commit()
+
+    flash(f"You caught {pokemon.name} and named it {nickname}!")
+    return redirect(request.referrer)
 
 @app.route("/rename-pokemon/<int:pokemon_id>", methods=['POST'])
 @jwt_required()

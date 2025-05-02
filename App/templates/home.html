@@ -1,47 +1,64 @@
 {% extends "layout.html" %}
 
-{% block title %}{% endblock %}
+{% block title %}Home{% endblock %}
 
 {% block page %}{% endblock %}
 
-{% block link%}
+{% block link %}
 <ul id="nav-mobile" class="right">
     <li><a href="/logout">Logout</a></li>
 </ul>
 {% endblock %}
 
-{% block styles%}
-
-    td{
+{% block styles %}
+    td {
         padding: 2px;
     }
 
-    .collection .collection-item.active{
+    .collection .collection-item.active {
         background-color: #E53935;
     }
 {% endblock %}
 
-
 {% block content %}
 <div class="row">
     <div class="col m3 list-container collection" style="max-height: 88vh;">
-  
+        {% for pokemon in all_pokemon %}
+            <a href="{{ url_for('home_page', pokemon_id=pokemon.id) }}" 
+               class="collection-item {% if selected_pokemon and selected_pokemon.id == pokemon.id %}active{% endif %}" 
+               id="poke-{{ pokemon.id }}">
+               <span>{{ pokemon.name.strip() }}</span>
+            </a>              
+        {% endfor %}
     </div>
     
     <div class="col m3">
-
-            <p class="text-center">Selected Pokemon</p>
-
-            <div id="pokemon-detail">
-                 <!-- Show pokemon details here -->
-            </div>
-
+        <p class="text-center">Selected Pokemon</p>
+        <div id="pokemon-detail">
+            {% if selected_pokemon %}
+                <h5 class="card-title">{{ selected_pokemon.name }}</h5>
+                <ul>
+                    <li>HP: {{ selected_pokemon.hp }}</li>
+                    <li>Attack: {{ selected_pokemon.attack }}</li>
+                    <li>Defense: {{ selected_pokemon.defense }}</li>
+                    <li>Speed: {{ selected_pokemon.speed }}</li>
+                    <li>Type: {{ selected_pokemon.type1 }}{% if selected_pokemon.type2 %} / {{ selected_pokemon.type2 }}{% endif %}</li>
+                    <li>Height: {{ selected_pokemon.height }} m</li>
+                    <li>Weight: {{ selected_pokemon.weight }} kg</li>
+                </ul>
+                <form action="{{ url_for('capture_action', pokemon_id=selected_pokemon.id) }}" method="post">
+                    <input name="nickname" placeholder="Nickname" required>
+                    <button class="btn red">Catch</button>
+                </form>
+            {% else %}
+                <p>No Pokémon selected.</p>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="col m6" >
-        <p class="text-center">Your Pokemon</p>
+    <div class="col m6">
+        <p class="text-center">Your Pokémon</p>
         <table class="responsive-table" id="pokemon-table">
-            <!-- Captured pokemon content here -->
             <thead>
                 <tr>
                     <th>Pokemon</th>
@@ -50,13 +67,21 @@
                 </tr>
             </thead>
             <tbody>
-              <!-- show captured pokemon here with controls to rename and release for each pokemon -->
+                {% for up in captured_pokemon %}
+                    <tr id="captured-pokemon-{{ up.pokemon_id }}">
+                        <td>{{ up.pokemon.name }}</td>
+                        <td id="pokemon_name">{{ up.nickname }}</td>
+                        <td>
+                            <form action="{{ url_for('rename_action', pokemon_id=up.pokemon_id) }}" method="post" style="display:inline;">
+                                <input name="nickname" placeholder="New name" required>
+                                <button class="btn-small">Rename</button>
+                            </form>
+                            <a href="{{ url_for('release_action', pokemon_id=up.pokemon_id) }}" class="btn-small red">Release</a>
+                        </td>
+                    </tr>                
+                {% endfor %}
             </tbody>
         </table>
     </div>
-
 </div>
-
-
-
 {% endblock %}
